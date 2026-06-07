@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
+
+active_json="$(hyprctl activewindow -j 2>/dev/null || true)"
+target_address="$(
+  ACTIVE_JSON="$active_json" python3 -c 'import json, os
+try:
+    print(json.loads(os.environ.get("ACTIVE_JSON", "{}")).get("address", ""))
+except Exception:
+    print("")
+' 2>/dev/null
+)"
+
+export LLM_CORRECTOR_TARGET_ADDRESS="$target_address"
+
+exec ghostty \
+  --class=llm-corrector \
+  --title=llm-corrector \
+  --window-width=86 \
+  --window-height=20 \
+  "--keybind=shift+enter=csi:13;2u" \
+  -e "$root/bin/llm-corrector"
