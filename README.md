@@ -2,6 +2,7 @@
 
 Small terminal TUI for Hyprland that:
 
+- corrects the currently focused text field with a keybind
 - opens from a keybind in a floating terminal window
 - uses a compact popup-style Ghostty window
 - accepts multiline text
@@ -20,6 +21,14 @@ Small terminal TUI for Hyprland that:
 The defaults target `http://127.0.0.1:8080/v1` and start `llama.service` if no server is reachable.
 
 ## Run
+
+Correct and replace the focused field:
+
+```bash
+/home/juju/Projects/llm-corrector-tui/bin/llm-corrector-field
+```
+
+Open the popup TUI:
 
 ```bash
 /home/juju/Projects/llm-corrector-tui/bin/llm-corrector-launch
@@ -45,7 +54,7 @@ Set `LLM_CORRECTOR_START_CMD=""` to test the "model not already running" path wi
 Example:
 
 ```ini
-bindd = $mainMod CONTROL, semicolon, Correct text with local LLM, exec, /home/juju/Projects/llm-corrector-tui/bin/llm-corrector-launch
+bindd = $mainMod, semicolon, Correct focused field with local LLM, exec, /home/juju/Projects/llm-corrector-tui/bin/llm-corrector-field
 
 windowrule {
     name = llm-corrector-float
@@ -58,5 +67,7 @@ windowrule {
 ```
 
 ## Notes
+
+The focused-field command works by sending `Ctrl+A`, copying the focused field, correcting it, then pasting the corrected text back. This is app-dependent. It is best for chat boxes and normal form inputs, not editors where `Ctrl+A` selects a whole document.
 
 `Shift+Enter` depends on the terminal reporting modified enter keys. The launcher enables this in Ghostty by default; the TUI also requests Kitty keyboard protocol as a fallback for terminals that support it.

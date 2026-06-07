@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
+
+if ! "$root/bin/llm-corrector" --focused-field; then
+  notify-send -a llm-corrector -u normal -t 2500 "LLM Corrector" "Could not correct the focused field"
+  exit 1
+fi
