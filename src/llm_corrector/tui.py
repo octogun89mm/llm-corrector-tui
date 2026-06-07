@@ -16,6 +16,17 @@ KEY_BACKSPACE = "backspace"
 KEY_ESCAPE = "escape"
 KEY_CTRL_C = "ctrl-c"
 
+RESET = "\x1b[0m"
+BOLD = "\x1b[1m"
+DIM = "\x1b[2m"
+FG = "\x1b[38;2;220;220;220m"
+MUTED = "\x1b[38;2;150;155;160m"
+ACCENT = "\x1b[38;2;86;216;201m"
+BORDER = "\x1b[38;2;85;91;99m"
+PANEL = "\x1b[48;2;24;26;30m"
+INPUT = "\x1b[48;2;30;33;39m"
+STATUS = "\x1b[38;2;131;199;70m"
+
 
 class CorrectorTui:
     def __init__(self, on_submit: Callable[[str], str]) -> None:
@@ -28,7 +39,7 @@ class CorrectorTui:
         old = termios.tcgetattr(fd)
         try:
             tty.setraw(fd)
-            self._write("\x1b[?1049h\x1b[?25l\x1b[>1u")
+            self._write("\x1b[?1049h\x1b[?25h\x1b[2 q\x1b[>1u")
             while True:
                 self.draw()
                 key = read_key(fd)
@@ -53,30 +64,43 @@ class CorrectorTui:
                 elif isinstance(key, str):
                     self.buffer += key
         finally:
-            self._write("\x1b[<u\x1b[?25h\x1b[?1049l")
+            self._write("\x1b[<u\x1b[0 q\x1b[?25h\x1b[?1049l")
             termios.tcsetattr(fd, termios.TCSADRAIN, old)
 
     def draw(self) -> None:
-        size = shutil.get_terminal_size((86, 20))
-        width = max(40, size.columns)
-        height = max(10, size.lines)
+        size = shutil.get_terminal_size((76, 14))
+        width = max(48, size.columns)
+        height = max(12, size.lines)
         inner_w = width - 4
-        input_h = height - 6
+        input_h = height - 7
 
         lines = wrap_buffer(self.buffer, inner_w)
-        visible = lines[-input_h:] if lines else [""]
+        if not lines:
+            lines = [""]
+        start = max(0, len(lines) - input_h)
+        visible = lines[start:]
+        cursor_line = max(0, len(lines) - 1 - start)
+        cursor_col = min(len(lines[-1]), inner_w)
 
-        out = ["\x1b[H\x1b[2J"]
-        out.append("+" + "-" * (width - 2) + "+")
-        title = " local llm corrector "
-        out.append("|" + title.ljust(width - 2)[: width - 2] + "|")
-        out.append("|" + "-" * (width - 2) + "|")
+        out = ["\x1b[H\x1b[2J" + PANEL]
+        out.append(BORDER + "╭" + "─" * (width - 2) + "╮")
+        title = f"{BOLD}{FG}  LLM Corrector{RESET}{PANEL}"
+        chip = f"{STATUS}● Ready{RESET}{PANEL}"
+        gap = max(1, width - visible_len("  LLM Corrector") - visible_len("● Ready") - 4)
+        out.append(f"{BORDER}│{title}{' ' * gap}{chip}  {BORDER}│")
+        out.append(BORDER + "├" + "─" * (width - 2) + "┤")
         for i in range(input_h):
             line = visible[i] if i < len(visible) else ""
-            out.append("| " + line.ljust(inner_w)[:inner_w] + " |")
-        out.append("|" + "-" * (width - 2) + "|")
-        out.append("| " + self.status.ljust(inner_w)[:inner_w] + " |")
-        out.append("+" + "-" * (width - 2) + "+")
+            if not self.buffer and i == 0:
+                line = f"{DIM}Type text to correct...{RESET}{INPUT}"
+            out.append(f"{BORDER}│{INPUT} {fit_ansi(line, inner_w)} {PANEL}{BORDER}│")
+        out.append(BORDER + "├" + "─" * (width - 2) + "┤")
+        footer = f"{MUTED}{self.status}{RESET}{PANEL}"
+        out.append(f"{BORDER}│ {fit_ansi(footer, inner_w)} {BORDER}│")
+        out.append(BORDER + "╰" + "─" * (width - 2) + "╯" + RESET)
+        cursor_row = 4 + min(cursor_line, input_h - 1)
+        cursor_column = 3 + cursor_col
+        out.append(f"\x1b[{cursor_row};{cursor_column}H")
         self._write("\r\n".join(out))
 
     def _write(self, text: str) -> None:
@@ -128,3 +152,39 @@ def wrap_buffer(buffer: str, width: int) -> list[str]:
         )
         result.extend(wrapped or [""])
     return result
+
+
+def visible_len(text: str) -> int:
+    length = 0
+    in_escape = False
+    for char in text:
+        if char == "\x1b":
+            in_escape = True
+            continue
+        if in_escape:
+            if char.isalpha():
+                in_escape = False
+            continue
+        length += 1
+    return length
+
+
+def fit_ansi(text: str, width: int) -> str:
+    out: list[str] = []
+    length = 0
+    in_escape = False
+    for char in text:
+        if char == "\x1b":
+            in_escape = True
+            out.append(char)
+            continue
+        if in_escape:
+            out.append(char)
+            if char.isalpha():
+                in_escape = False
+            continue
+        if length >= width:
+            break
+        out.append(char)
+        length += 1
+    return "".join(out) + RESET + PANEL + (" " * max(0, width - length))

@@ -3,6 +3,7 @@
 Small terminal TUI for Hyprland that:
 
 - opens from a keybind in a floating terminal window
+- uses a compact popup-style Ghostty window
 - accepts multiline text
 - uses `Shift+Enter` for a newline and `Enter` to send
 - sends text to a local llama.cpp OpenAI-compatible server
@@ -48,9 +49,9 @@ bindd = $mainMod CONTROL, semicolon, Correct text with local LLM, exec, /home/ju
 
 windowrule {
     name = llm-corrector-float
-    match:class = llm-corrector
+    match:title = ^llm-corrector$
     float = true
-    size = 760 360
+    size = 720 320
     center = true
     stay_focused = true
 }

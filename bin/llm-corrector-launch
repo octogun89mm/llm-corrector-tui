@@ -18,7 +18,12 @@ export LLM_CORRECTOR_TARGET_ADDRESS="$target_address"
 exec ghostty \
   --class=llm-corrector \
   --title=llm-corrector \
-  --window-width=86 \
-  --window-height=20 \
+  --window-decoration=false \
+  --gtk-titlebar=false \
+  --background-opacity=0.96 \
+  --window-padding-x=18 \
+  --window-padding-y=16 \
+  --window-width=76 \
+  --window-height=14 \
   "--keybind=shift+enter=csi:13;2u" \
   -e "$root/bin/llm-corrector"
